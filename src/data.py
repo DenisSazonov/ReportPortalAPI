@@ -4,7 +4,7 @@ import time
 
 
 class Data:
-    BASE_URL = 'https://web.demo.reportportal.io'
+    BASE_URL = 'http://10.20.12.189:8080'
     BASE_API_PATH = BASE_URL + '/api/v1/'
     basic_authorization_header = {"authorization": "Basic dWk6dWltYW4="}
 
@@ -16,9 +16,12 @@ class Data:
         user_name = (credentials['user']['user_name'])
         password = (credentials['user']['password'])
         new_password = (credentials['user']['new_password'])
+        admin_name = (credentials['superadmin']['user_name'])
+        admin_password = (credentials['superadmin']['password'])
         auth_string = f'/uat/sso/oauth/token?grant_type=password&password={password}&username={user_name}'
         auth_string_after_password_changing = f'/uat/sso/oauth/token?grant_type=password&password={new_password}&username={user_name}'
-        return auth_string, password, new_password, auth_string_after_password_changing
+        auth_string_for_admin = f'/uat/sso/oauth/token?grant_type=password&password={admin_password}&username={admin_name}'
+        return auth_string, password, new_password, auth_string_after_password_changing, auth_string_for_admin
 
     @staticmethod
     def json_for_create_dashboard():
@@ -45,16 +48,28 @@ class Data:
         return file
 
     @staticmethod
-    def json_for_create_user():
-        json_for_create_user = {
-            "accountRole": "USER",
-            "default_project": "default_personal",
-            "email": str(time.time()) + "@mail.com",
-            "full_name": "Full Name",
-            "login": "login" + str(time.time()),
-            "password": "default_password",
-            "projectRole": "CUSTOMER"
-        }
+    def json_for_create_user(*args):
+        if args:
+            args = args[0]
+            json_for_create_user = {
+                "accountRole": "USER",
+                "default_project": "default_personal",
+                "email": str(time.time()) + "@mail.com",
+                "full_name": "Full Name",
+                "login": args[0],
+                "password": "default_password",
+                "projectRole": "CUSTOMER"
+            }
+        else:
+            json_for_create_user = {
+                "accountRole": "USER",
+                "default_project": "default_personal",
+                "email": str(time.time()) + "@mail.com",
+                "full_name": "Full Name",
+                "login": "login" + str(time.time()),
+                "password": "default_password",
+                "projectRole": "CUSTOMER"
+            }
         return json_for_create_user
 
     @staticmethod
@@ -64,3 +79,32 @@ class Data:
             "oldPassword": old_password
         }
         return json_for_update_password
+
+    @staticmethod
+    def json_for_create_new_project():
+        timestamp = str(time.time()).replace('.', '')
+        json_for_create = {
+            "addInfo": "Some information about project",
+            "customer": "Test customer",
+            "entryType": "INTERNAL",
+            "projectName": "project_created_at_" + timestamp
+        }
+        return json_for_create
+
+    @staticmethod
+    def no_permissions_json():
+        json = {
+            "error_code": 4003,
+            "message": "You do not have enough permissions. Access is denied"
+        }
+        return json
+
+    @staticmethod
+    def json_for_update_project():
+        json = {"addInfo": "Updated_project"}
+        return json
+
+    @staticmethod
+    def json_for_assign_user(login):
+        json = {"userNames": {login: "MEMBER"}}
+        return json
