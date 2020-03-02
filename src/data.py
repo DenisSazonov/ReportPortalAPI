@@ -4,7 +4,7 @@ import time
 
 
 class Data:
-    BASE_URL = 'http://10.20.12.189:8080'
+    BASE_URL = 'http://10.20.12.203:8080'
     BASE_API_PATH = BASE_URL + '/api/v1/'
     basic_authorization_header = {"authorization": "Basic dWk6dWltYW4="}
 

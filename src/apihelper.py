@@ -1,44 +1,31 @@
 import requests
 from src.data import Data
+from .authorization import Authorization
 
 
 class ApiHelper:
+    def __init__(self):
+        self.user_access_token = Authorization().authentification()
+        self.admin_token = Authorization().authentification_with_admin_role()
 
-    def authentification(self):
-        auth_path = Data.read_credentials()
-        login_url = Data.BASE_URL + auth_path[0]
-        response = requests.post(login_url, headers=Data.basic_authorization_header)
-        body = response.json()
-        authorization_header = {'authorization': 'bearer ' + body['access_token']}
-        return authorization_header
+    def get_current_user_info(self):
+        response = requests.get(Data.BASE_API_PATH + 'user', headers=self.user_access_token)
+        content = ApiHelper.content(response)
+        return content
 
-    def authentification_with_new_password(self):
-        auth_path = Data.read_credentials()
-        login_url = Data.BASE_URL + auth_path[3]
-        response = requests.post(login_url, headers=Data.basic_authorization_header)
-        body = response.json()
-        authorization_header = {'authorization': 'bearer ' + body['access_token']}
-        return authorization_header
-
-    def authentification_with_admin_role(self):
-        auth_path = Data.read_credentials()
-        login_url = Data.BASE_URL + auth_path[4]
-        response = requests.post(login_url, headers=Data.basic_authorization_header)
-        body = response.json()
-        authorization_header = {'authorization': 'bearer ' + body['access_token']}
-        return authorization_header
-
-    def get_user_info(self, *args):
-        if not args:
-            response = requests.get(Data.BASE_API_PATH + 'user', headers=ApiHelper.authentification(self))
+    def get_info_about_all_users(self, *args):
+        if args[0] == 'user':
+            response = requests.get(Data.BASE_API_PATH + 'user/all', headers=self.user_access_token)
+        elif not args:
+            response = requests.get(Data.BASE_API_PATH + 'user/all', headers=self.admin_token)
         else:
             response = requests.get(Data.BASE_API_PATH + 'user/' + args[0],
-                                    headers=ApiHelper.authentification_with_admin_role(self))
+                                    headers=self.admin_token)
         content = ApiHelper.content(response)
         return content
 
     def get_project_name(self):
-        content = ApiHelper.get_user_info(self)
+        content = ApiHelper.get_current_user_info(self)
         json = content[1]
         project = json['default_project']
         return project
@@ -47,7 +34,7 @@ class ApiHelper:
         content = []
         project = ApiHelper.get_project_name(self)
         project_url = Data.BASE_API_PATH + project + '/dashboard'
-        response = requests.get(project_url, headers=ApiHelper.authentification(self))
+        response = requests.get(project_url, headers=self.user_access_token)
         status_code = response.status_code
         content.append(status_code)
         response = response.json()
@@ -64,7 +51,7 @@ class ApiHelper:
     def create_new_dashboard(self):
         project = ApiHelper.get_project_name(self)
         project_url = Data.BASE_API_PATH + project + '/dashboard'
-        response = requests.post(project_url, headers=ApiHelper.authentification(self),
+        response = requests.post(project_url, headers=self.user_access_token,
                                  json=Data.json_for_create_dashboard())
         content = ApiHelper.content(response)
         return content
@@ -72,28 +59,28 @@ class ApiHelper:
     def get_shared_dashboards(self):
         project = ApiHelper.get_project_name(self)
         project_url = Data.BASE_API_PATH + project + '/dashboard/shared'
-        response = requests.get(project_url, headers=ApiHelper.authentification(self))
+        response = requests.get(project_url, headers=self.user_access_token)
         content = ApiHelper.content(response)
         return content
 
     def delete_dashboard(self, new_dashboard_id):
         project = ApiHelper.get_project_name(self)
         dashboard_url = Data.BASE_API_PATH + project + '/dashboard/' + new_dashboard_id
-        response = requests.delete(dashboard_url, headers=ApiHelper.authentification(self))
+        response = requests.delete(dashboard_url, headers=self.user_access_token)
         content = ApiHelper.content(response)
         return content
 
     def get_specified_dashboard_for_project(self, new_dashboard_id):
         project = ApiHelper.get_project_name(self)
         dashboard_url = Data.BASE_API_PATH + project + '/dashboard/' + new_dashboard_id
-        response = requests.get(dashboard_url, headers=ApiHelper.authentification(self))
+        response = requests.get(dashboard_url, headers=self.user_access_token)
         content = ApiHelper.content(response)
         return content
 
     def update_dashboard(self, dashboard_id):
         project = ApiHelper.get_project_name(self)
         project_url = Data.BASE_API_PATH + project + '/dashboard/' + dashboard_id
-        response = requests.put(project_url, headers=ApiHelper.authentification(self),
+        response = requests.put(project_url, headers=self.user_access_token,
                                 json=Data.json_for_update_dashboard())
         content = ApiHelper.content(response)
         return content
@@ -114,25 +101,26 @@ class ApiHelper:
     def get_activities(self):
         project = ApiHelper.get_project_name(self)
         activity_url = Data.BASE_API_PATH + project + '/activity'
-        response = requests.get(activity_url, headers=ApiHelper.authentification(self))
+        response = requests.get(activity_url, headers=self.user_access_token)
         content = ApiHelper.content(response)
         return content
 
     def upload_photo(self, photo):
         data_url = Data.BASE_API_PATH + '/data/photo'
-        response = requests.post(data_url, headers=ApiHelper.authentification(self), files=Data.return_photo(photo))
+        response = requests.post(data_url, headers=self.user_access_token,
+                                 files=Data.return_photo(photo))
         content = ApiHelper.content(response)
         return content
 
     def get_photo(self):
         data_url = Data.BASE_API_PATH + '/data/photo'
-        response = requests.get(data_url, headers=ApiHelper.authentification(self))
+        response = requests.get(data_url, headers=self.user_access_token)
         status_code = response.status_code
         return status_code
 
     def delete_photo(self):
         data_url = Data.BASE_API_PATH + '/data/photo'
-        response = requests.delete(data_url, headers=ApiHelper.authentification(self))
+        response = requests.delete(data_url, headers=self.user_access_token)
         content = ApiHelper.content(response)
         return content
 
@@ -141,12 +129,10 @@ class ApiHelper:
         user_url = Data.BASE_API_PATH + '/user'
         if args:
             json = Data.json_for_create_user(args)
-            response = requests.post(user_url, headers=ApiHelper.authentification_with_admin_role(self),
-                                     json=json)
+            response = requests.post(user_url, headers=self.admin_token, json=json)
         else:
             json = Data.json_for_create_user()
-            response = requests.post(user_url, headers=ApiHelper.authentification_with_admin_role(self),
-                                     json=json)
+            response = requests.post(user_url, headers=self.admin_token, json=json)
         status_code = response.status_code
         content.append(status_code)
         response = response.json()
@@ -158,7 +144,7 @@ class ApiHelper:
         content = []
         user_url = Data.BASE_API_PATH + '/user/password/change'
         json = Data.json_for_update_password(Data.read_credentials()[2], Data.read_credentials()[1])
-        response = requests.post(user_url, headers=ApiHelper.authentification(self), json=json)
+        response = requests.post(user_url, headers=self.user_access_token, json=json)
         status_code = response.status_code
         content.append(status_code)
         response = response.json()
@@ -166,10 +152,11 @@ class ApiHelper:
         content.append(Data.json_for_create_user())
         return content
 
-    def revert_password(self):
+    @staticmethod
+    def revert_password():
         user_url = Data.BASE_API_PATH + '/user/password/change'
         json = Data.json_for_update_password(Data.read_credentials()[1], Data.read_credentials()[2])
-        response = requests.post(user_url, headers=ApiHelper.authentification_with_new_password(self), json=json)
+        response = requests.post(user_url, headers=Authorization().authentification_with_new_password(), json=json)
         status_code = response.status_code
         return status_code
 
@@ -180,14 +167,11 @@ class ApiHelper:
     def create_project(self, *args):
         content = []
         request_json = Data.json_for_create_new_project()
+        project_url = Data.BASE_API_PATH + 'project'
         if args:
-            project_url = Data.BASE_API_PATH + 'project'
-            response = requests.post(project_url, headers=ApiHelper.authentification_with_admin_role(self),
-                                     json=request_json)
+            response = requests.post(project_url, headers=self.admin_token, json=request_json)
         else:
-            project_url = Data.BASE_API_PATH + 'project'
-            response = requests.post(project_url, headers=ApiHelper.authentification(self),
-                                     json=request_json)
+            response = requests.post(project_url, headers=self.user_access_token, json=request_json)
         status_code = response.status_code
         content.append(status_code)
         response = response.json()
@@ -197,7 +181,7 @@ class ApiHelper:
 
     def delete_project(self, new_project):
         project_url = Data.BASE_API_PATH + 'project/' + new_project
-        response = requests.delete(project_url, headers=ApiHelper.authentification_with_admin_role(self))
+        response = requests.delete(project_url, headers=self.admin_token)
         content = ApiHelper.content(response)
         return content
 
@@ -207,47 +191,44 @@ class ApiHelper:
         else:
             project_id = self.get_project_name()
             project_url = Data.BASE_API_PATH + 'project/' + project_id
-        response = requests.get(project_url, headers=ApiHelper.authentification_with_admin_role(self))
+        response = requests.get(project_url, headers=self.admin_token)
         content = ApiHelper.content(response)
         return content
 
     def update_project(self, project):
         project_url = Data.BASE_API_PATH + 'project/' + project
-        response = requests.put(project_url, headers=ApiHelper.authentification_with_admin_role(self),
-                                json=Data.json_for_update_project())
+        response = requests.put(project_url, headers=self.admin_token, json=Data.json_for_update_project())
         content = ApiHelper.content(response)
         return content
 
     def assign_user_on_project(self, project):
         project_url = Data.BASE_API_PATH + 'project/' + project + '/assign'
-        response = requests.put(project_url, headers=ApiHelper.authentification_with_admin_role(self),
+        response = requests.put(project_url, headers=self.admin_token,
                                 json=Data.json_for_assign_user('user_for_assignee'))
         content = ApiHelper.content(response)
         return content
 
     def delete_user(self, user):
         user_url = Data.BASE_API_PATH + 'user/' + user
-        response = requests.delete(user_url, headers=ApiHelper.authentification_with_admin_role(self))
+        response = requests.delete(user_url, headers=self.admin_token)
         content = ApiHelper.content(response)
         return content
 
     def get_users_who_can_be_assigned_on_project(self, project):
         project_url = Data.BASE_API_PATH + 'project/' + project + '/assignable'
-        response = requests.get(project_url, headers=ApiHelper.authentification_with_admin_role(self))
+        response = requests.get(project_url, headers=self.admin_token)
         content = ApiHelper.content(response)
         return content
 
     def get_assigned_on_project_users(self, project):
         project_url = Data.BASE_API_PATH + 'project/' + project + '/users'
-        response = requests.get(project_url, headers=ApiHelper.authentification_with_admin_role(self))
+        response = requests.get(project_url, headers=self.admin_token)
         content = ApiHelper.content(response)
         return content
 
     def un_assign_user(self, project, user):
         project_url = Data.BASE_API_PATH + 'project/' + project + '/unassign'
-        response = requests.put(project_url, headers=ApiHelper.authentification_with_admin_role(self),
-                                json={"userNames": [user]}
-                                )
+        response = requests.put(project_url, headers=self.admin_token, json={"userNames": [user]})
         content = ApiHelper.content(response)
         return content
 

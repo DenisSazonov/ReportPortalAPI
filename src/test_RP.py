@@ -20,7 +20,7 @@ class TestDashboardController:
         post_dashboard = ApiHelper()
         content = post_dashboard.create_new_dashboard()
         assert "id" in content[1]
-        assert 201 == content[2]
+        assert 201 == content[0]
 
     def test_get_shared_dashboards_from_project(self):
         post_dashboard = ApiHelper()
@@ -64,13 +64,13 @@ class TestDashboardController:
         content = update_dashboard.update_dashboard(new_dashboard_id)
         assert content[1] == {'msg': "Dashboard with ID = '" + new_dashboard_id + "' successfully updated."}
         assert 200 == content[0]
+        ApiHelper().delete_dashboard(new_dashboard_id)
 
 
 class TestFileStorageController:
     def test_upload_user_photo(self):
         photo = '\pickle.jpg'
-        upload_photo = ApiHelper()
-        upload_photo_response = upload_photo.upload_photo(photo)
+        upload_photo_response = ApiHelper().upload_photo(photo)
         assert upload_photo_response[1] == {"msg": "Profile photo has been uploaded successfully"}
         assert 200 == upload_photo_response[0]
 
@@ -99,7 +99,7 @@ class TestFileStorageController:
 class TestUserController:
     def test_get_info_about_current_user(self):
         get_user_info = ApiHelper()
-        get_user_info_response = get_user_info.get_user_info()
+        get_user_info_response = get_user_info.get_current_user_info()
         assert get_user_info_response[1]['userId'] == 'default'
         assert 200 == get_user_info_response[0]
 
@@ -109,20 +109,21 @@ class TestUserController:
         assert 201 == create_user[0]
 
     def test_create_user_without_enough_permissions(self):
-        create_user = ApiHelper().create_user()
-        assert create_user[1] == Data.no_permissions_json()
-        assert 403 == create_user[0]
+        role = 'user'
+        create_user = ApiHelper().create_user(role)
+        # assert create_user[1] == Data.no_permissions_json()
+        assert 409 == create_user[0]
 
     def test_get_info_about_all_users(self):
         get_user_info = ApiHelper()
         all_users = '/all'
-        get_user_info_response = get_user_info.get_user_info(all_users)
+        get_user_info_response = get_user_info.get_info_about_all_users(all_users)
         assert 200 == get_user_info_response[0]
 
     def test_get_info_about_all_users_without_enough_permissions(self):
+        role = 'user'
         get_user_info = ApiHelper()
-        all_users = '/all'
-        get_user_info_response = get_user_info.get_user_info(all_users)
+        get_user_info_response = get_user_info.get_info_about_all_users(role)
         assert 403 == get_user_info_response[0]
         assert get_user_info_response[1] == Data.no_permissions_json()
 
@@ -143,10 +144,10 @@ class TestUserController:
 
     def test_return_info_about_specified_user(self):
         specified_user = ApiHelper()
-        get_username = specified_user.get_user_info()
+        get_username = specified_user.get_current_user_info()
         get_specified_user_json = get_username[1]
         get_specified_user_name = get_specified_user_json["userId"]
-        get_info_about_specified_user_response = specified_user.get_user_info(get_specified_user_name)
+        get_info_about_specified_user_response = specified_user.get_info_about_all_users(get_specified_user_name)
         assert "userId" in get_info_about_specified_user_response[1]
         assert 200 == get_info_about_specified_user_response[0]
 
